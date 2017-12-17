@@ -1,0 +1,40 @@
+syntax = "proto2";
+package test;
+
+enum TestEnum
+{
+	MOBILE = 0;
+    HOME = 1;
+    WORK = 2;
+}
+
+message TestTypes
+{
+	required double v_double 		= 1;
+	required float v_float 			= 2;
+
+	required int32 v_int32 			= 3;
+	required sint32 v_sint32 		= 4;
+	required uint32 v_uint32 		= 5;
+	required sfixed32 v_sfixed32 	= 6;
+	required fixed32 v_fixed32 		= 7;
+
+	required int64 v_int64 			= 8;
+	required sint64 v_sint64 		= 9;
+	required uint64 v_uint64 		= 10;
+	required sfixed64 v_sfixed64 	= 11;
+	required fixed64 v_fixed64 		= 12;
+
+	required bool v_bool 			= 13;
+	required string v_string 		= 14;
+	required bytes v_bytes 			= 15;
+
+	// special types
+	optional TestEnum v_enum 		= 20;
+	repeated int32 	v_array 		= 21;
+}
+
+message TestMap
+{
+	map<int32, string> v_map 		= 1;
+}
