@@ -1,3 +1,6 @@
 [submodule "lua-protobuf"]
 	path = lua-protobuf
 	url = https://github.com/youlanhai/lua-protobuf
+[submodule "lua"]
+	path = lua
+	url = git@github.com:lua/lua.git

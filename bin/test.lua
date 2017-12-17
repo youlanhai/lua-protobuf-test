@@ -4,7 +4,7 @@ print("hello lua")
 local abs = math.abs
 local min = math.min
 local append = table.insert
-local pb = pb --require "pb"
+local pb = pb or require "pb"
 
 local MAX_INDENT = 100
 local INDENTS = { [0] = "", }
