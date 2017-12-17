@@ -1,0 +1,3 @@
+[submodule "lua-protobuf"]
+	path = lua-protobuf
+	url = https://github.com/youlanhai/lua-protobuf
