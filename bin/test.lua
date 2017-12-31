@@ -1,99 +1,14 @@
 
 print("hello lua")
 
-local abs = math.abs
-local min = math.min
-local append = table.insert
 local pb = pb or require "pb"
+local testutil = require "testutil"
 
-local MAX_INDENT = 100
-local INDENTS = { [0] = "", }
-for i = 1, MAX_INDENT do INDENTS[i] = INDENTS[i - 1] .. "    " end
-local TRANSLATION = {
-	["\0"] = "\\0",
-	["\n"] = "\\n",
-	["\t"] = "\\t",
-	["\r"] = "\\r",
-	["\b"] = "\\b",
-}
-local function format_s(str)
-	local ret = {}
-	for i = 1, #str do
-		local ch = str:sub(i, i)
-		append(ret, TRANSLATION[ch] or ch)
-	end
-	return table.concat(ret, "")
-end
-
-local function dump(t, max_indent)
-	local cache = {}
-	local ret = {}
-	local function _dump(t, indent, max_indent)
-		local tp = type(t)
-		if tp == "table" then
-			if cache[t] == nil then
-				cache[t] = true
-				append(ret, "{")
-				local empty = true
-				for k, v in pairs(t) do
-					append(ret, "\n")
-					append(ret, INDENTS[min(indent + 1, max_indent)])
-					append(ret, "[")
-					_dump(k, 0, 0)
-					append(ret, "] = ")
-					_dump(v, indent + 1, max_indent)
-					empty = false
-				end
-				if not empty then
-					append(ret, "\n")
-					append(ret, INDENTS[min(indent, max_indent)])
-				end
-				append(ret, "}")
-			else
-				append(ret, "{...}")
-			end
-		elseif tp == "number" or tp == "boolean" or tp == "nil" then
-			append(ret, tostring(t))
-		else
-			append(ret, '"')
-			append(ret, format_s(tostring(t)))
-			append(ret, '"')
-		end
-	end
-
-	_dump(t, 0, max_indent or MAX_INDENT)
-	return table.concat(ret, "")
-end
-
-local function print_t(t, msg)
-	if msg then
-		print(msg, dump(t))
-	else
-		print(dump(t))
-	end
-end
-
-local function compare_table(a, b)
-	for k, v1 in pairs(a) do
-		local v2 = b[k]
-		if v1 ~= v2 then
-			print(format("not equal at key = %s, v1 = %s, v2 = %s", k, v1, v2))
-		end
-	end
-end
-
-local function test(a, b, msg)
-	if a ~= b then
-		print(format("Test Failed %s: %s ~= %s", tostring(msg), tostring(a), tostring(b)))
-	end
-end
-
-local function test_float(a, b, msg, epsilon)
-	local v = abs(a - b)
-	if v > epsilon then
-		print(format("Test Failed %s: %f ~= %f", tostring(msg), a, b))
-	end
-end
+local dump = testutil.dump
+local print_t = testutil.print_t
+local test = testutil.test
+local test_float = testutil.test_float
+local compare_table = testutil.compare_table
 
 local function test_addressbook()
 
@@ -246,29 +161,85 @@ local function test_types()
 	test(output.v_fixed64, "4294967297", "v_fixed64")
 end
 
+local dump_type
+
+local function dump_fields(types, type)
+	local fields = {}
+	for i = 1, type:nfields() do
+		local f = type:getfield(i)
+		if f then
+			local tp = f:type()
+			local field = {
+				name = f:name(),
+				type = tp and tp:name(),
+				tag = f:tag(),
+				value = f:value(),
+				isrequired = f:isrequired(),
+				isrepeated = f:isrepeated(),
+			}
+			table.insert(fields, field)
+			if tp then
+				dump_type(types, tp)
+			end
+		end
+	end
+	return fields
+end
+
+dump_type = function(types, type)
+	local name = type:name()
+	if types[name] ~= nil then
+		return
+	end
+
+	local ret = {
+		__cname = type.__cname,
+		name = name,
+		basename = type:basename(),
+		isenum = type:isenum(),
+	}
+	types[name] = ret
+
+	if ret.isenum then
+		ret.enums = type:to_enums()
+	else
+		ret.fields = dump_fields(types, type)
+	end
+end
+
 local function test_map()
+	print("test map ...")
+	-- local tp = pb.findtype("test.TestMap")
+	-- local types = {}
+	-- dump_type(types, tp)
+	-- print_t(types, "types")
+
 	local input = {
-		v_map = {{key = 1, value = "xxx"},}
+		v_map = {
+			[1] = "xxx",
+			[4] = "yyy",
+		},
+		users = {
+			jack = {name = "jack", age = 20},
+			lily = {name = "lily", age = 22},
+		},
 	}
 
 	local bin, err = pb.encode("test.TestMap", input)
 	assert(bin, err)
 	local output = pb.decode("test.TestMap", bin)
 	print_t(output)
+
+	compare_table(output.v_map, input.v_map, "test.TestMap")
+	compare_table(output.users.jack, input.users.jack, "test.TestMap")
+	compare_table(output.users.lily, input.users.lily, "test.TestMap")
 end
 
-local function test_fields()
+local function test_enum()
+	print("test enum ..")
 	local tp = pb.findtype("test.TestEnum")
 	print(tp.__cname, tp:name(), tp:basename())
 	print("is enum:", tp:isenum())
-	print("n fields:", tp:nfields())
-
-	for i = 1, tp:nfields() do
-		local f = tp:getfield(i)
-		if f then
-			print(f:name(), f:value())
-		end
-	end
 
 	print_t(tp:to_enums(), "enums")
 end
@@ -279,5 +250,4 @@ test_addressbook()
 pb.loadfile("test.pb")
 test_types()
 test_map()
-
-test_fields()
+test_enum()

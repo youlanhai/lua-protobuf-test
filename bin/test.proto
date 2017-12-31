@@ -36,5 +36,11 @@ message TestTypes
 
 message TestMap
 {
+	message User
+	{
+		required string name = 1;
+		required int32 age = 2;
+	}
 	map<int32, string> v_map 		= 1;
+	map<string, User> users 		= 2;
 }
