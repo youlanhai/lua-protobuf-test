@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.0.0 FATAL_ERROR)
 
 project(lua-protobuf)
 
+option(ENABLE_LUA_53 "ENABLE_LUA_53" ON)
+
 set(OUTPUT_PATH "${PROJECT_SOURCE_DIR}/bin")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_PATH})
@@ -39,12 +41,18 @@ set(SOURCE_FILES
 	lua/ltable.c
 	lua/ltablib.c
 	lua/ltm.c
-	# lua/lua.c
-	# lua/luac.c
 	lua/lundump.c
 	lua/lvm.c
 	lua/lzio.c
 )
+
+if (ENABLE_LUA_53)
+	list(APPEND SOURCE_FILES
+		lua/lcorolib.c
+		lua/lctype.c
+		lua/lutf8lib.c
+	)
+endif()
 
 add_definitions(-DLUA_BUILD_AS_DLL)
 
@@ -62,7 +70,7 @@ add_definitions(-DPB_IMPLEMENTATION)
 set(SOURCE_FILES 
 	lua-protobuf/pb.c
 	lua-protobuf/pb.h
-	lua-protobuf/pb_extends.h
+	# lua-protobuf/pb_extends.h
 )
 
 add_library(${TARGET_NAME} SHARED ${SOURCE_FILES})

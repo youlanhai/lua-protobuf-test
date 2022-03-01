@@ -3,6 +3,7 @@ local abs = math.abs
 local min = math.min
 local append = table.insert
 local concat = table.concat
+local traceback = debug.traceback
 
 local MAX_INDENT = 100
 local INDENTS = { [0] = "", }
@@ -77,6 +78,7 @@ local function compare_table(a, b, desc)
 		local v2 = b[k]
 		if v1 ~= v2 then
 			print(format("%s: not equal at key = %s, v1 = %s, v2 = %s", desc, k, v1, v2))
+			print(traceback(nil, 2))
 		end
 	end
 end
@@ -84,6 +86,7 @@ end
 local function test(a, b, msg)
 	if a ~= b then
 		print(format("Test Failed %s: %s ~= %s", tostring(msg), tostring(a), tostring(b)))
+		print(traceback(nil, 2))
 	end
 end
 
@@ -91,6 +94,7 @@ local function test_float(a, b, msg, epsilon)
 	local v = abs(a - b)
 	if v > epsilon then
 		print(format("Test Failed %s: %f ~= %f", tostring(msg), a, b))
+		print(traceback(nil, 2))
 	end
 end
 

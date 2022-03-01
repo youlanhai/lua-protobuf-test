@@ -1,10 +1,3 @@
-print("lua version", _VERSION)
-
-if _VERSION == "Lua 5.3" then
-	print("run lua 5.3 test case...")
-	require("test-5_3")
-	return
-end
 
 local pb = pb or require "pb"
 local testutil = require "testutil"
@@ -21,7 +14,7 @@ local function test_addressbook()
 		name = "Alice",
 		id = 12345,
 		phone = {
-			{ number = "1301234567" },
+			{ number = "1301234567", type = 1 },
 			{ number = "87654321", type = "WORK" },
 		}
 	}
@@ -32,16 +25,28 @@ local function test_addressbook()
 	test(v.name, person.name, "person.name")
 	test(v.id, person.id, "person.name")
 	test(v.phone[1].number, person.phone[1].number, "person.phone[1].number")
-	test(v.phone[2].number, person.phone[2].number, "person.phone[1].number")
-	test(v.phone[2].type, 2, "person.phone[1].type")
+	test(v.phone[1].type, 1, "person.phone[1].number")
+	test(v.phone[2].number, person.phone[2].number, "person.phone[2].number")
+	test(v.phone[2].type, 2, "person.phone[2].type")
+end
+
+local function test_required()
+	local person = {
+		name = "Alice",
+	}
+
+	local ok, err = pcall(function()
+		pb.encode("addressbook.Person", person)
+	end)
+	print("test required:", ok, err)
+	test(ok, false, "missing required")
 end
 
 local function test_types()
-	-- 当数字比较大时，由于lua的double和int64转换的时候会丢失精度，
-	-- 因此，内部自动转换成了字符串。
-	local MAX_UINT64 = "18446744073709551615"
-	local MAX_INT64  = "9223372036854775807"
-	local MIN_INT64  = "-9223372036854775808"
+	-- 注意lua5.3的整数的有符号的，对于无符号的最大数无法表示，这里放弃了测试
+	local MAX_UINT64 = 9223372036854775807 --"#18446744073709551615"
+	local MAX_INT64  = 9223372036854775807
+	local MIN_INT64  = -9223372036854775808
 
 	-- 通用测试 和 int64正边界测试
 	local input = {
@@ -66,6 +71,7 @@ local function test_types()
 
 		v_enum 		= 1,
 	}
+
 	print_t(input, "test")
 
 	local bin_data = assert(pb.encode("test.TestTypes", input))
@@ -108,7 +114,7 @@ local function test_types()
 		
 		v_int64 	= MIN_INT64,
 		v_sint64 	= MIN_INT64,
-		v_uint64 	= "-1",
+		v_uint64 	= -1,
 		v_sfixed64 	= MIN_INT64,
 		v_fixed64 	= -1,
 
@@ -129,9 +135,11 @@ local function test_types()
 
 	test(output.v_int64, input.v_int64, "v_int64")
 	test(output.v_sint64, input.v_sint64, "v_sint64")
-	test(output.v_uint64, MAX_UINT64, "v_uint64")
+	--由于lua5.3无法表达无符号最大整数，因此解析出来后，还是-1
+	test(output.v_uint64, -1, "v_uint64") -- MAX_UINT64
 	test(output.v_sfixed64, input.v_sfixed64, "v_sfixed64")
-	test(output.v_fixed64, MAX_UINT64, "v_fixed64")
+	--由于lua5.3无法表达无符号最大整数，因此解析出来后，还是-1
+	test(output.v_fixed64, -1, "v_fixed64") -- MAX_UINT64
 
 	test(output.v_bool, input.v_bool, "v_bool")
 	test(output.v_string, input.v_string, "v_string")
@@ -161,9 +169,9 @@ local function test_types()
 	output = pb.decode("test.TestTypes", pb.encode("test.TestTypes", input))
 	test(output.v_int64, input.v_int64, "v_int64")
 	test(output.v_sint64, input.v_sint64, "v_sint64")
-	test(output.v_uint64, "4294967297", "v_uint64")
+	test(output.v_uint64, 4294967297, "v_uint64")
 	test(output.v_sfixed64, input.v_sfixed64, "v_sfixed64")
-	test(output.v_fixed64, "4294967297", "v_fixed64")
+	test(output.v_fixed64, 4294967297, "v_fixed64")
 end
 
 local dump_type
@@ -240,7 +248,7 @@ local function test_map()
 	compare_table(output.users.lily, input.users.lily, "test.TestMap")
 end
 
-local function test_enum()
+local function test_enum_ex()
 	print("test enum ..")
 	local tp = pb.findtype("test.TestEnum")
 	print(tp.__cname, tp:name(), tp:basename())
@@ -249,10 +257,29 @@ local function test_enum()
 	print_t(tp:to_enums(), "enums")
 end
 
-pb.loadfile("addressbook.pb")
-test_addressbook()
+local function test_enum()
+	print("test enum ..")
+	local name, basename, type = pb.type("test.TestEnum")
+	print("name", name)
+	print("basename", basename)
+	print("type", type)
+	print("is enum:", type == "enum")
 
-pb.loadfile("test.pb")
-test_types()
-test_map()
-test_enum()
+	for name, number in pb.fields("test.TestEnum") do
+		print("enum:", name, number)
+	end
+end
+
+local function run_test()
+	pb.option("enum_as_value", true)
+	pb.loadfile("addressbook.pb")
+	test_addressbook()
+	test_required()
+
+	pb.loadfile("test.pb")
+	test_types()
+	test_map()
+	test_enum()
+end
+
+run_test()
